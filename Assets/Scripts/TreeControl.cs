@@ -16,13 +16,12 @@ public class TreeControl : MonoBehaviour {
 	public TreeColor color;
 	public Material[] colorMaterials;
 
-	[HideInInspector]
-	public GridSpline[,] pointsToBranches;
-
+	private GridSpline[,] pointsToBranches;
 	private bool isDeleting = false;
 	private bool isWaiting = false;
 	private float endTime = 0;
 	private Dictionary<GridSpline, float> branchesToDepths = new Dictionary<GridSpline, float> ();
+    private AnimationCounter deleteCounter;
 
 	void Update() {
 		if (isDeleting) {
@@ -39,14 +38,15 @@ public class TreeControl : MonoBehaviour {
 		rootGridArray.Add (new Vector2(gridSize / 2, -1));
 		rootGridArray.Add (new Vector2(gridSize / 2, 0));
 		rootGridArray.Add (new Vector2(gridSize / 2, 1));
-		MakeBranch (rootGridArray);
+		MakeBranch (rootGridArray, null);
 	}
 
-	public void Remove() {
+	public void Remove(AnimationCounter counter) {
+        deleteCounter = counter;
 		isDeleting = true;
 	}
 
-	public GridSpline AddPoint(Vector2 point) {
+	public GridSpline AddPoint(Vector2 point, AnimationCounter counter) {
 		int x = (int)point.x;
 		int y = (int)point.y;
 
@@ -56,7 +56,7 @@ public class TreeControl : MonoBehaviour {
 
 		if (leftBranch != null) {
 			if (IsLastPoint(leftBranch, x - 1, y)) {
-				AddToBranch (leftBranch, point);
+				AddToBranch (leftBranch, point, counter);
 				return leftBranch;
 			} else {
 				if (IsValidCoord (x - 1, y - 1) && leftBranch.currentPoints.Contains (new Vector2(x - 1, y - 1 ))) {
@@ -64,18 +64,18 @@ public class TreeControl : MonoBehaviour {
 					gridArray.Add (new Vector2(x - 1, y - 1));
 					gridArray.Add (new Vector2(x - 1, y));
 					gridArray.Add (new Vector2(x, y));
-					return MakeBranch (gridArray);
+					return MakeBranch (gridArray, counter);
 				} else {
 					List<Vector2> gridArray = new List<Vector2> ();
 					gridArray.Add (new Vector2 (x - 2, y));
 					gridArray.Add (new Vector2 (x - 1, y));
 					gridArray.Add (new Vector2 (x, y));
-					return MakeBranch (gridArray);
+					return MakeBranch (gridArray, counter);
 				}
 			}
 		} else if (rightBranch != null) {
 			if (IsLastPoint(rightBranch, x + 1, y)) {
-				AddToBranch (rightBranch, point);
+				AddToBranch (rightBranch, point, counter);
 				return rightBranch;
 			} else {
 				if (IsValidCoord (x + 1, y - 1) && rightBranch.currentPoints.Contains (new Vector2(x + 1, y - 1))) {
@@ -83,18 +83,18 @@ public class TreeControl : MonoBehaviour {
 					gridArray.Add (new Vector2(x + 1, y - 1));
 					gridArray.Add (new Vector2(x + 1, y));
 					gridArray.Add (new Vector2(x, y));
-					return MakeBranch (gridArray);
+					return MakeBranch (gridArray, counter);
 				} else {
 					List<Vector2> gridArray = new List<Vector2> ();
 					gridArray.Add (new Vector2(x + 2, y));
 					gridArray.Add (new Vector2(x + 1, y));
 					gridArray.Add (new Vector2(x, y));
-					return MakeBranch (gridArray);
+					return MakeBranch (gridArray, counter);
 				}
 			}
 		} else if (bottomBranch != null) {
 			if (IsLastPoint(bottomBranch, x, y - 1)) {
-				AddToBranch (bottomBranch, point);
+				AddToBranch (bottomBranch, point, counter);
 				return bottomBranch;
 			} else {
 				if (IsValidCoord (x - 1, y - 1) && bottomBranch.currentPoints.Contains (new Vector2(x - 1, y - 1)) &&
@@ -108,13 +108,13 @@ public class TreeControl : MonoBehaviour {
 					gridArray.Add (new Vector2 (x + dir, y - 1));
 					gridArray.Add (new Vector2 (x, y - 1));
 					gridArray.Add (new Vector2 (x, y));
-					return MakeBranch (gridArray);
+					return MakeBranch (gridArray, counter);
 				} else {
 					List<Vector2> gridArray = new List<Vector2> ();
 					gridArray.Add (new Vector2 (x, y - 2));
 					gridArray.Add (new Vector2 (x, y - 1));
 					gridArray.Add (new Vector2 (x, y));
-					return MakeBranch (gridArray);
+					return MakeBranch (gridArray, counter);
 				}
 			}
 		}
@@ -124,6 +124,7 @@ public class TreeControl : MonoBehaviour {
 	private void DeleteAnimate(float time) {
 		if (isWaiting) {
 			if (time > endTime) {
+                deleteCounter.Dec();
 				Destroy (gameObject);
 			}
 		} else {
@@ -144,15 +145,15 @@ public class TreeControl : MonoBehaviour {
 		}
 	}
 
-	private void AddToBranch(GridSpline branch, Vector2 point) {
+	private void AddToBranch(GridSpline branch, Vector2 point, AnimationCounter counter) {
 		int x = (int)point.x;
 		int y = (int)point.y;
 		branch.currentPoints.Add (point);
-		branch.Reshape (branch.currentPoints);
+		branch.Reshape (branch.currentPoints, counter);
 		pointsToBranches [x, y] = branch;
 	}
 
-	private GridSpline MakeBranch(List<Vector2> points) {
+	private GridSpline MakeBranch(List<Vector2> points, AnimationCounter counter) {
 		GameObject newBranch = Instantiate (branch, gameObject.transform.position, Quaternion.identity);
 		newBranch.transform.parent = gameObject.transform;
 		GridSpline gridSpline = (GridSpline) newBranch.GetComponent<GridSpline> ();
@@ -161,7 +162,7 @@ public class TreeControl : MonoBehaviour {
 		MeshRenderer renderer = newBranch.GetComponent<MeshRenderer> ();
 		renderer.material = colorMaterials [(int)color];
 
-		gridSpline.Reshape (points);
+		gridSpline.Reshape (points, counter);
 
 		float baseDepth = 0;
 		int baseX = (int)points [1].x;

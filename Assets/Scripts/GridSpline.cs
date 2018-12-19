@@ -27,6 +27,7 @@ public class GridSpline : MonoBehaviour {
 	private float animationStartTime = -100;
 	private float totalAnimationTime;
 	private int animationDir = 1;
+    private AnimationCounter finishCounter;
 
 	void Awake () {
 		splineDraw = gameObject.GetComponent<SplineDraw> () as SplineDraw;
@@ -39,7 +40,8 @@ public class GridSpline : MonoBehaviour {
 			isAnimating = false;
 
 			if (animationDir == 1) {
-				GameControl.animationLock--;
+				GameControl.animationLock.Dec();
+                if (finishCounter != null) finishCounter.Dec();
 				splineDraw.Reshape (splinePositions, splineWidths);
 			} else {
 				Destroy (gameObject);
@@ -56,7 +58,8 @@ public class GridSpline : MonoBehaviour {
 		StartCoroutine (DeleteWait (startDeleteTime - Time.time, startDeleteTime));
 	}
 
-	public void Reshape(List<Vector2> points) {
+	public void Reshape(List<Vector2> points, AnimationCounter counter) {
+        finishCounter = counter;
 		List<Vector2> positions = new List<Vector2> ();
 		Vector2 direction = new Vector2 (points [1].x - points [0].x, points [1].y - points [0].y);
 		positions.Add(GridToVector (points [0]) + startOffset * gridSpacing * direction);

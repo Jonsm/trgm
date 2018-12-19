@@ -3,8 +3,9 @@ using System.Collections.Generic;
 using UnityEngine;
 
 public class GameControl : MonoBehaviour {
-	public static int animationLock = 0;
+	public static AnimationCounter animationLock = new AnimationCounter();
 	public static bool animated = true;
+    public static bool debugMode = true;
 
 	private static Formation[] formationsList = new Formation[]{
 		new Formation(new int[] {0, 1, 0}),
@@ -39,7 +40,7 @@ public class GameControl : MonoBehaviour {
 	}
 
 	void Update() {
-		if (animationLock == 0) {
+		if (animationLock.counter == 0) {
 			if (markers == null) {
 				MakeDrops ();
 			}
@@ -70,7 +71,11 @@ public class GameControl : MonoBehaviour {
 			if (Input.GetKeyDown (KeyCode.Space)) {
 				Drop ();
 			}
-		} else {
+
+            if (debugMode && Input.GetKeyDown(KeyCode.D)) {
+                ResetDrops();
+            }
+        } else {
 			validPress = false;
 		}
 	}
@@ -83,7 +88,7 @@ public class GameControl : MonoBehaviour {
 	}
 
 	private void MoveMarker(int dir) {
-		if (currentX + dir >= 0 && currentX + dir < width) {
+		if (currentX + dir - 1>= 0 && currentX + dir + 1 < width) {
 			currentX = currentX + dir;
 			foreach (GameObject markerObj in markers) {
 				if (markerObj != null) {
@@ -97,7 +102,7 @@ public class GameControl : MonoBehaviour {
 		for (int i = 0; i < markers.Count; i++) {
 			if (markers [i] != null) {
 				if (animated) {
-					animationLock++;
+					animationLock.Inc();
 				}
 
 				int x = currentX + i - Mathf.FloorToInt (.5f * markers.Count);
@@ -105,12 +110,12 @@ public class GameControl : MonoBehaviour {
 				markerControl.Drop (height, x);
 			}
 		}
-
 		markers = null;
 	}
 
 	private void MakeDrops() {
-		Formation formation = formationsList [Random.Range (0, formationsList.Length)];
+        treeGrid.UpdateGrid();
+        Formation formation = formationsList [Random.Range (0, formationsList.Length)];
 		TreeControl.TreeColor[] dropColors = formation.GetColors ();
 
 		markers = new List<GameObject> ();
@@ -130,4 +135,12 @@ public class GameControl : MonoBehaviour {
 
 		currentX = width / 2;
 	}
+
+    private void ResetDrops() {
+        foreach (GameObject marker in markers) {
+            Destroy(marker);
+        }
+        markers.Clear();
+        MakeDrops();
+    }
 }
