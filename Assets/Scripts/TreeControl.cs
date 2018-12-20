@@ -38,7 +38,7 @@ public class TreeControl : MonoBehaviour {
 		rootGridArray.Add (new Vector2(gridSize / 2, -1));
 		rootGridArray.Add (new Vector2(gridSize / 2, 0));
 		rootGridArray.Add (new Vector2(gridSize / 2, 1));
-		MakeBranch (rootGridArray, null);
+		MakeBranch (rootGridArray);
 	}
 
 	public void Remove(AnimationCounter counter) {
@@ -46,7 +46,7 @@ public class TreeControl : MonoBehaviour {
 		isDeleting = true;
 	}
 
-	public GridSpline AddPoint(Vector2 point, AnimationCounter counter) {
+	public GridSpline AddPoint(Vector2 point) {
 		int x = (int)point.x;
 		int y = (int)point.y;
 
@@ -56,7 +56,7 @@ public class TreeControl : MonoBehaviour {
 
 		if (leftBranch != null) {
 			if (IsLastPoint(leftBranch, x - 1, y)) {
-				AddToBranch (leftBranch, point, counter);
+				AddToBranch (leftBranch, point);
 				return leftBranch;
 			} else {
 				if (IsValidCoord (x - 1, y - 1) && leftBranch.currentPoints.Contains (new Vector2(x - 1, y - 1 ))) {
@@ -64,18 +64,18 @@ public class TreeControl : MonoBehaviour {
 					gridArray.Add (new Vector2(x - 1, y - 1));
 					gridArray.Add (new Vector2(x - 1, y));
 					gridArray.Add (new Vector2(x, y));
-					return MakeBranch (gridArray, counter);
+					return MakeBranch (gridArray);
 				} else {
 					List<Vector2> gridArray = new List<Vector2> ();
 					gridArray.Add (new Vector2 (x - 2, y));
 					gridArray.Add (new Vector2 (x - 1, y));
 					gridArray.Add (new Vector2 (x, y));
-					return MakeBranch (gridArray, counter);
+					return MakeBranch (gridArray);
 				}
 			}
 		} else if (rightBranch != null) {
 			if (IsLastPoint(rightBranch, x + 1, y)) {
-				AddToBranch (rightBranch, point, counter);
+				AddToBranch (rightBranch, point);
 				return rightBranch;
 			} else {
 				if (IsValidCoord (x + 1, y - 1) && rightBranch.currentPoints.Contains (new Vector2(x + 1, y - 1))) {
@@ -83,18 +83,18 @@ public class TreeControl : MonoBehaviour {
 					gridArray.Add (new Vector2(x + 1, y - 1));
 					gridArray.Add (new Vector2(x + 1, y));
 					gridArray.Add (new Vector2(x, y));
-					return MakeBranch (gridArray, counter);
+					return MakeBranch (gridArray);
 				} else {
 					List<Vector2> gridArray = new List<Vector2> ();
 					gridArray.Add (new Vector2(x + 2, y));
 					gridArray.Add (new Vector2(x + 1, y));
 					gridArray.Add (new Vector2(x, y));
-					return MakeBranch (gridArray, counter);
+					return MakeBranch (gridArray);
 				}
 			}
 		} else if (bottomBranch != null) {
 			if (IsLastPoint(bottomBranch, x, y - 1)) {
-				AddToBranch (bottomBranch, point, counter);
+				AddToBranch (bottomBranch, point);
 				return bottomBranch;
 			} else {
 				if (IsValidCoord (x - 1, y - 1) && bottomBranch.currentPoints.Contains (new Vector2(x - 1, y - 1)) &&
@@ -108,13 +108,13 @@ public class TreeControl : MonoBehaviour {
 					gridArray.Add (new Vector2 (x + dir, y - 1));
 					gridArray.Add (new Vector2 (x, y - 1));
 					gridArray.Add (new Vector2 (x, y));
-					return MakeBranch (gridArray, counter);
+					return MakeBranch (gridArray);
 				} else {
 					List<Vector2> gridArray = new List<Vector2> ();
 					gridArray.Add (new Vector2 (x, y - 2));
 					gridArray.Add (new Vector2 (x, y - 1));
 					gridArray.Add (new Vector2 (x, y));
-					return MakeBranch (gridArray, counter);
+					return MakeBranch (gridArray);
 				}
 			}
 		}
@@ -145,15 +145,15 @@ public class TreeControl : MonoBehaviour {
 		}
 	}
 
-	private void AddToBranch(GridSpline branch, Vector2 point, AnimationCounter counter) {
+	private void AddToBranch(GridSpline branch, Vector2 point) {
 		int x = (int)point.x;
 		int y = (int)point.y;
 		branch.currentPoints.Add (point);
-		branch.Reshape (branch.currentPoints, counter);
+		branch.Reshape (branch.currentPoints);
 		pointsToBranches [x, y] = branch;
 	}
 
-	private GridSpline MakeBranch(List<Vector2> points, AnimationCounter counter) {
+	private GridSpline MakeBranch(List<Vector2> points) {
 		GameObject newBranch = Instantiate (branch, gameObject.transform.position, Quaternion.identity);
 		newBranch.transform.parent = gameObject.transform;
 		GridSpline gridSpline = (GridSpline) newBranch.GetComponent<GridSpline> ();
@@ -162,7 +162,7 @@ public class TreeControl : MonoBehaviour {
 		MeshRenderer renderer = newBranch.GetComponent<MeshRenderer> ();
 		renderer.material = colorMaterials [(int)color];
 
-		gridSpline.Reshape (points, counter);
+		gridSpline.Reshape (points);
 
 		float baseDepth = 0;
 		int baseX = (int)points [1].x;

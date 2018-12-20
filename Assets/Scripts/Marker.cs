@@ -25,6 +25,7 @@ public class Marker : MonoBehaviour {
             while (actualY <= currentY) {
                 int check = treeGrid.CheckNeighbors(new Vector2(currentX, currentY), currentColor);
                 if (check == 1) {
+                    GameControl.animationLock.Dec();
                     Destroy(gameObject);
                 } else if (check == -1) {
                     GameControl.animationLock.Dec();
@@ -49,17 +50,6 @@ public class Marker : MonoBehaviour {
     public void Drop(int height, int currentX) { //the bass
         currentY = height - 1;
         this.currentX = currentX;
-        if (GameControl.animated) {
-            isDropping = true;
-        } else {
-            while (currentY >= 0) {
-                int check = treeGrid.CheckNeighbors(new Vector2(currentX, currentY), currentColor);
-                if (check == 1 || check == -1) {
-                    break;
-                }
-                currentY--;
-            }
-            Destroy(gameObject);
-        }
+        isDropping = true;
     }
 }
