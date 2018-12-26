@@ -32,14 +32,11 @@ public class Formation {
 	}
 
 	public void Shuffle(TreeControl.TreeColor[] array) {
-		int n = array.Length;
-		while (n > 1)
-		{
-			n--;
-			int i = Random.Range(0, n);
-			TreeControl.TreeColor temp = array[i];
-			array[i] = array[n];
-			array[n] = temp;
-		}
-	}
+        for (int i = 0; i < array.Length; i++) {
+            int j = Random.Range(i, array.Length);
+            TreeControl.TreeColor temp = array[i];
+            array[i] = array[j];
+            array[j] = temp;
+        }
+    }
 }

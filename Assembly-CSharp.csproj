@@ -62,6 +62,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assets\Scripts\AnimationCounter.cs" />
+    <Compile Include="Assets\Scripts\EasingFunctions.cs" />
     <Compile Include="Assets\Scripts\Formation.cs" />
     <Compile Include="Assets\Scripts\GameControl.cs" />
     <Compile Include="Assets\Scripts\GridSpline.cs" />
@@ -69,6 +70,7 @@
     <Compile Include="Assets\Scripts\SplineDraw.cs" />
     <Compile Include="Assets\Scripts\TreeControl.cs" />
     <Compile Include="Assets\Scripts\TreeGrid.cs" />
+    <Compile Include="Assets\Scripts\WildCardMarker.cs" />
     <None Include="Assets\Shaders\WildcardShader.shader" />
     <Reference Include="Unity.TextMeshPro.Editor">
       <HintPath>/Users/jon/Documents/Unity/Trees/Library/ScriptAssemblies/Unity.TextMeshPro.Editor.dll</HintPath>

@@ -158,7 +158,7 @@ MonoBehaviour:
   tree: {fileID: 1865174607925992, guid: 5f7df0ea4cd8943aab15d55b10a91631, type: 3}
   gridSpacing: 1
   width: 11
-  height: 10
+  height: 11
 --- !u!1 &499221874
 GameObject:
   m_ObjectHideFlags: 0
@@ -363,10 +363,19 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 086bfe7817fe740af89b37ce49382777, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  markerObjects:
+  - {fileID: 1027885870663650, guid: 521b7c0c76cc14533a84e877950bd7cb, type: 3}
+  - {fileID: 1027885870663650, guid: b18035384d55a474b986f97f6906e3ad, type: 3}
+  - {fileID: 1027885870663650, guid: fd134e2947d894d98a17d6477a926810, type: 3}
+  - {fileID: 0}
+  - {fileID: 1027885870663650, guid: 2e565af91a64c4bb880a06eb67e5a4d8, type: 3}
   treeGrid: {fileID: 290470392}
-  moveDelay: 0.5
-  rateAfterDelay: 5
-  marker: {fileID: 1027885870663650, guid: 521b7c0c76cc14533a84e877950bd7cb, type: 3}
+  dropTime: 0.8
+  dropAnimationTime: 0.3
+  freeFallSpeed: 8
+  bounceTime: 0.18
+  bounceAmount: 0.1
+  sideMoveRate: 5
 --- !u!1 &1511559481
 GameObject:
   m_ObjectHideFlags: 0

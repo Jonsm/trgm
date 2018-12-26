@@ -6,9 +6,12 @@ public class SplineDraw : MonoBehaviour {
 	public MeshFilter meshFilter;
 	public int segments;
 	public float terminatorLength;
-	public float[] terminator = new float[] {.8f, .5f, .05f};
+    public int terminatorSegments;
 
-	private Mesh mesh;
+
+    private Mesh mesh;
+    private float[] terminatorWidths;
+    private float[] terminatorLengths;
 
 	void Awake () {
 		mesh = meshFilter.mesh;
@@ -29,10 +32,19 @@ public class SplineDraw : MonoBehaviour {
 			
 		mesh.vertices = vertices;
 		mesh.triangles = triangles;
-	}
+
+        terminatorWidths = new float[terminatorSegments];
+        terminatorLengths = new float[terminatorSegments];
+        for (int i = 0; i < terminatorSegments; i++) {
+            terminatorWidths[i] = Mathf.Cos((i + 1) * Mathf.PI / terminatorSegments / 2);
+            terminatorLengths[i] = Mathf.Sin((i + 1) * Mathf.PI / terminatorSegments / 2) -
+                Mathf.Sin(i * Mathf.PI / terminatorSegments / 2);
+        }
+        terminatorWidths[terminatorSegments - 1] += .01f;
+    }
 
 	public void Reshape(List<Vector2> positions, List<float> widths) {
-		int buffer = segments - positions.Count + 1 - terminator.Length;
+		int buffer = segments - positions.Count + 1 - terminatorSegments;
 		float startCos = (positions [1].x - positions [0].x) / (positions [1] - positions [0]).magnitude;
 		float startSin = (positions [1].y - positions [0].y) / (positions [1] - positions [0]).magnitude;
 		Vector2 startWidthDisp = new Vector2 (-1 * startSin, startCos) * widths[0] / 2f;
@@ -66,17 +78,18 @@ public class SplineDraw : MonoBehaviour {
 		Vector2 endDirection = (positions [last] - positions [last - 1]).normalized;
 		if (Vector2.Dot (endWidthDisp, widthDisp) < 0)
 			endWidthDisp = -1 * endWidthDisp;
-		vertices [vertices.Length - 2 - 2 * terminator.Length] = positions [last] - endWidthDisp;
-		vertices [vertices.Length - 1 - 2 * terminator.Length] = positions [last] + endWidthDisp;
+		vertices [vertices.Length - 2 - 2 * terminatorSegments] = positions [last] - endWidthDisp;
+		vertices [vertices.Length - 1 - 2 * terminatorSegments] = positions [last] + endWidthDisp;
 
-		for (int i = 0; i < terminator.Length; i++) {
-			int j = vertices.Length - 2 * (terminator.Length - i);
-			Vector2 terminatorOffset = positions [last] + endDirection * (terminatorLength / terminator.Length) * (i + 1);
-			vertices [j] = terminatorOffset - endWidthDisp * terminator [i];
-			vertices [j + 1] = terminatorOffset + endWidthDisp * terminator [i];
-		}
+        Vector2 terminatorOffset = positions[last];
+        for (int i = 0; i < terminatorSegments; i++) {
+            int j = vertices.Length - 2 * (terminatorSegments - i);
+            terminatorOffset += endDirection * terminatorLengths[i] * widths[last]/2;
+            vertices[j] = terminatorOffset - endWidthDisp * terminatorWidths[i];
+            vertices[j + 1] = terminatorOffset + endWidthDisp * terminatorWidths[i];
+        }
 
-		mesh.vertices = vertices;
+        mesh.vertices = vertices;
 		mesh.RecalculateBounds ();
 	}
 }

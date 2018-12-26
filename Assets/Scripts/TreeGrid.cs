@@ -18,13 +18,14 @@ public class TreeGrid : MonoBehaviour {
         pointsToTrees = new TreeControl[width, height];
     }
 
-    public int CheckNeighbors(Vector2 point, TreeControl.TreeColor color) {
+    public int CheckNeighbors(Vector2 point, Marker marker) {
         int x = (int)point.x;
         int y = (int)point.y;
+        TreeControl.TreeColor color = marker.color;
 
         if (y > 0) {
             if (CanAdd (x - 1, y, color) || CanAdd (x + 1, y, color) || CanAdd (x, y - 1, color)) {
-                AddPoint (point, color);
+                AddPoint (point, marker);
                 return 1;
             } else if (pointsToTrees [x, y - 1] != null && pointsToTrees [x, y - 1].color != color) {
                 return -1;
@@ -35,7 +36,7 @@ public class TreeGrid : MonoBehaviour {
             if (color == TreeControl.TreeColor.WILDCARD) {
                 return -1;
             } else {
-                AddPoint (point, color);
+                AddPoint (point, marker);
                 return 1;
             }
         }
@@ -68,9 +69,16 @@ public class TreeGrid : MonoBehaviour {
         treesToRoots = newTrees;
     }
 
-    private void AddPoint(Vector2 point, TreeControl.TreeColor color) {
+    public bool Occupied(Vector2 point) {
+        int x = Mathf.RoundToInt(point.x);
+        int y = Mathf.RoundToInt(point.y);
+        return (pointsToTrees[x, y] != null);
+    }
+
+    private void AddPoint(Vector2 point, Marker marker) {
         int x = (int)point.x;
         int y = (int)point.y;
+        TreeControl.TreeColor color = marker.color;
 
         if (y > 0) {
             HashSet<TreeControl> added = new HashSet<TreeControl> ();
@@ -84,18 +92,43 @@ public class TreeGrid : MonoBehaviour {
                 added.Add (pointsToTrees [x, y - 1]);
             }
 
+            Dictionary<TreeControl.TreeColor, List<TreeControl>> colorsToTrees =
+                new Dictionary<TreeControl.TreeColor, List<TreeControl>>();
+            foreach (TreeControl treeControl in added) {
+                if (!colorsToTrees.ContainsKey(treeControl.color)) {
+                    colorsToTrees[treeControl.color] = new List<TreeControl>();
+                }
+                colorsToTrees[treeControl.color].Add(treeControl);
+            }
+            List<TreeControl> addingList = null;
+            if (color == TreeControl.TreeColor.WILDCARD) {
+                List<TreeControl.TreeColor> colorsList = new List<TreeControl.TreeColor>(colorsToTrees.Keys);
+                WildCardMarker wildMarker = (WildCardMarker)marker;
+                TreeControl.TreeColor wildColor = wildMarker.SetColor(colorsList);
+                addingList = colorsToTrees[wildColor];
+            } else {
+                addingList = colorsToTrees[color];
+            }
+
             if (added.Count > 1) {
                 foreach (TreeControl treeControl in added) {
                     GameControl.animationLock.Inc();
-                    treeControl.AddPoint(GridToTreeCoords(point, treeControl));
                     deletingSet.Add(treeControl);
                 }
+                AddToTrees(added, marker, point);
             } else {
                 TreeControl[] treeArray = new TreeControl[1];
                 added.CopyTo(treeArray);
                 TreeControl addedTree = treeArray [0];
                 GameControl.animationLock.Inc();
-                addedTree.AddPoint (GridToTreeCoords (point, addedTree));
+
+                //if (marker.color == TreeControl.TreeColor.WILDCARD) {
+                //    WildCardMarker wildMarker = (WildCardMarker)marker;
+                //    List<TreeControl.TreeColor> colors = new List<TreeControl.TreeColor>();
+                //    colors.Add(addedTree.color);
+                //    wildMarker.SetColor(colors);
+                //}
+                AddToTrees(added, marker, point);
 
                 if (!addingSet.ContainsKey(addedTree)) addingSet[addedTree] = new List<int[]>();
                 addingSet[addedTree].Add(new int[]{ x, y });
@@ -103,6 +136,16 @@ public class TreeGrid : MonoBehaviour {
         } else if (color != TreeControl.TreeColor.WILDCARD) {
             GameControl.animationLock.Inc();
             MakeTree (x, color);
+        }
+    }
+
+    private void AddToTrees(HashSet<TreeControl> trees, Marker marker, Vector2 point) {
+        if (marker.color == TreeControl.TreeColor.WILDCARD) {
+
+        } else {
+            foreach (TreeControl addedTree in trees) {
+                addedTree.AddPoint(GridToTreeCoords(point, addedTree));
+            }
         }
     }
 
@@ -120,6 +163,7 @@ public class TreeGrid : MonoBehaviour {
         while (GameControl.animationLock.counter > 1) {
             yield return new WaitForSeconds(.01f);
         }
+
         AnimationCounter finishCounter = new AnimationCounter(deletingSet.Count);
         foreach (TreeControl treeControl in deletingSet) {
             treeControl.Remove(finishCounter);

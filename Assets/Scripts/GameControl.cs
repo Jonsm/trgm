@@ -10,136 +10,224 @@ public class GameControl : MonoBehaviour {
         new Formation(new int[] {0, 1, 0}),
         new Formation(new int[] {0, -1, 0}),
         new Formation(new int[] {0, 1, 2}),
-        new Formation(new int[] {0, -1, 1})
-        //new Formation(new int[] {0, -2, 1}),
-        //new Formation(new int[] {0, -2, 0})
+        new Formation(new int[] {0, -1, 1}),
+        new Formation(new int[] {0, -2, 1}),
+        new Formation(new int[] {0, -2, 0})
     };
 
+    public List<GameObject> markerObjects;
     public TreeGrid treeGrid;
-    public float moveDelay;
-    public float rateAfterDelay;
-    public GameObject marker;
 
-    private float gridSpacing;
+    public float dropTime;
+    public float dropAnimationTime;
+    public float freeFallSpeed;
+    public float bounceTime;
+    public float bounceAmount;
+
+    public float sideMoveRate;
+
+    private Dictionary<TreeControl.TreeColor, GameObject> colorsToMarkers = 
+        new Dictionary<TreeControl.TreeColor, GameObject>();
+
     private int width;
     private int height;
-    private int currentX;
+    private float gridSpacing;
 
-    private float lastPressTime;
-    private float nextMoveTime;
-    private bool validPress = false;
+    private float lastDropTime;
+    private bool isDropping;
+    private EasingFunction1D droppingFunction;
 
-    private List<GameObject> markers;
+    private float freeFallStartTime;
+    private float freeFallStartHeight;
+    private float freeFallStopHeight;
+    private bool isFreeFall;
+    private bool stoppingFall;
+    private EasingFunction1D stoppingEase;
+
+    private float lastMoveTime;
+
+    private bool keyboardLock;
+
+    private Dictionary<GameObject, Vector2> markers = new Dictionary<GameObject, Vector2>();
+    private float currentHeight;
+    private int gridHeight;
 
     void Start() {
-        gridSpacing = treeGrid.gridSpacing;
+        TreeControl.TreeColor[] colors = (TreeControl.TreeColor[])System.Enum.GetValues(typeof(TreeControl.TreeColor));
+        for (int i = 0; i < colors.Length; i++) {
+            colorsToMarkers[colors[i]] = markerObjects[i];
+        }
+
         width = treeGrid.width;
         height = treeGrid.height;
-        MakeDrops ();
+        gridSpacing = treeGrid.gridSpacing;
+        droppingFunction = new BounceOnceEase(1 - bounceTime / dropAnimationTime, bounceAmount);
+        float freeFallBounceStart = 1 / (1 + freeFallSpeed * bounceTime);
+        stoppingEase = new BounceOnceEase(freeFallBounceStart, bounceAmount);
     }
 
-    void Update() {
+    private void Update() {
         if (animationLock.counter == 0) {
-            if (markers == null) {
-                MakeDrops ();
-            }
-
-            if (Input.GetKeyDown (KeyCode.LeftArrow)) {
-                InitiateMove (-1);
-            } else if (Input.GetKeyDown (KeyCode.RightArrow)) {
-                InitiateMove (1);
-            }
-
-            if (Time.time - lastPressTime > moveDelay && Time.time > nextMoveTime) {
-                nextMoveTime += 1.0f / rateAfterDelay;
-                if (Input.GetKey (KeyCode.LeftArrow)) {
-                    if (validPress) {
-                        MoveMarker (-1);
-                    } else {
-                        InitiateMove (-1);
-                    }
-                } else if (Input.GetKey (KeyCode.RightArrow)) {
-                    if (validPress) {
-                        MoveMarker (1);
-                    } else {
-                        InitiateMove (1);
-                    }
-                }
-            }
-
-            if (Input.GetKeyDown (KeyCode.Space)) {
-                Drop ();
-            }
-
-            if (debugMode && Input.GetKeyDown(KeyCode.D)) {
-                ResetDrops();
-            }
+            GenerateNewMarkers();
+            keyboardLock = false;
+            isFreeFall = false;
         } else {
-            validPress = false;
-        }
-    }
+            if (!keyboardLock) {
+                if (Input.GetKey(KeyCode.DownArrow)) {
+                    if (!isDropping && !isFreeFall) {
+                        freeFallStartTime = Time.time;
+                        freeFallStartHeight = currentHeight;
+                        isFreeFall = true;
+                    }
+                } else {
+                    if (Time.time - lastMoveTime > 1 / sideMoveRate) {
+                        if (Input.GetKey(KeyCode.LeftArrow)) {
+                            SideMove(-1);
+                        }
+                        if (Input.GetKey(KeyCode.RightArrow)) {
+                            SideMove(1);
+                        }
+                    }
 
-    private void InitiateMove(int dir) {
-        MoveMarker (dir);
-        lastPressTime = Time.time;
-        nextMoveTime = Time.time + moveDelay;
-        validPress = true;
-    }
-
-    private void MoveMarker(int dir) {
-        if (currentX + dir - 1>= 0 && currentX + dir + 1 < width) {
-            currentX = currentX + dir;
-            foreach (GameObject markerObj in markers) {
-                if (markerObj != null) {
-                    markerObj.transform.position = markerObj.transform.position + dir * gridSpacing * Vector3.right;
+                    if (isFreeFall && !stoppingFall) {
+                        stoppingFall = true;
+                        freeFallStopHeight = currentHeight;
+                    }
                 }
             }
-        }
-    }
 
-    private void Drop() {
-        animationLock.Inc();
-        for (int i = 0; i < markers.Count; i++) {
-            if (markers [i] != null) {
-                animationLock.Inc();
-
-                int x = currentX + i - Mathf.FloorToInt (.5f * markers.Count);
-                Marker markerControl = (Marker)markers [i].GetComponent<Marker> ();
-                markerControl.Drop (height, x);
+            if (Time.time - lastDropTime > dropTime && !isFreeFall) {
+                isDropping = true;
+                lastDropTime = Time.time;
             }
+
+            if (isFreeFall) {
+                if (stoppingFall) {
+                    StopFallAnimation();
+                } else {
+                    FreeFallAnimation();
+                }
+            } else if (isDropping) {
+                DropAnimation();
+            }
+
+            UpdateHeights();
         }
-        treeGrid.DelayedRemove();
-        markers = null;
+
     }
 
-    private void MakeDrops() {
+    private void GenerateNewMarkers() {
         treeGrid.UpdateGrid();
+        animationLock.Inc();
+        currentHeight = height * gridSpacing - 1;
+        gridHeight = height - 1;
+
         Formation formation = formationsList [Random.Range (0, formationsList.Length)];
         TreeControl.TreeColor[] dropColors = formation.GetColors ();
-
-        markers = new List<GameObject> ();
-        Vector3 center = new Vector2 (0, height * gridSpacing);
+        Vector2 center = new Vector2(0, currentHeight);
         for (int i = 0; i < dropColors.Length; i++) {
-            if (dropColors [i] != TreeControl.TreeColor.NONE) {
-                Vector3 position = center + Vector3.right *
-                    gridSpacing * (i - Mathf.FloorToInt (.5f * dropColors.Length));
-                GameObject currentMarker = Instantiate (marker, position, Quaternion.identity);
-                Marker markerControl = (Marker)currentMarker.GetComponent<Marker> ();
-                markerControl.SetColor (dropColors [i]);
-                markers.Add (currentMarker);
-            } else {
-                markers.Add (null);
+            if (dropColors[i] != TreeControl.TreeColor.NONE) {
+                int gridX = i - Mathf.FloorToInt(.5f * dropColors.Length);
+                Vector2 position = center + Vector2.right * gridSpacing * gridX;
+                GameObject marker = Instantiate(colorsToMarkers[dropColors[i]], position, Quaternion.identity);
+                markers[marker] = new Vector2(gridX + width / 2, gridHeight);
+                animationLock.Inc();
             }
         }
-
-        currentX = width / 2;
+        lastDropTime = Time.time;
+        treeGrid.DelayedRemove();
     }
 
-    private void ResetDrops() {
-        foreach (GameObject marker in markers) {
-            Destroy(marker);
+    private void SideMove (int dir) {
+        lastMoveTime = Time.time;
+        Vector2 disp = new Vector2(dir, 0);
+        List<GameObject> markerList = new List<GameObject>(markers.Keys);
+        foreach (GameObject marker in markerList) {
+            if ((markers[marker].x + dir >= width || markers[marker].x + dir < 0) ||
+                treeGrid.Occupied(markers[marker] + disp))
+                return;
         }
-        markers.Clear();
-        MakeDrops();
+
+        foreach (GameObject marker in markerList) {
+            marker.transform.position = marker.transform.position + (Vector3)(gridSpacing * disp);
+            markers[marker] = markers[marker] + disp;
+        }
+    }
+
+    private void DropAnimation() {
+        if (Time.time - lastDropTime < dropAnimationTime) {
+            float startY = gridHeight * gridSpacing;
+            float endY = (gridHeight - 1) * gridSpacing;
+            float t = Time.time - lastDropTime;
+            currentHeight = droppingFunction.Lerp(startY, endY, t, dropAnimationTime);
+        } else {
+            UpdateGridHeight();
+            isDropping = false;
+        }
+    }
+
+    private void FreeFallAnimation() {
+        currentHeight = freeFallStartHeight - freeFallSpeed * gridSpacing * (Time.time - freeFallStartTime);
+        if (currentHeight < (gridHeight - 1) * gridSpacing) UpdateGridHeight();
+    }
+
+    private void StopFallAnimation() {
+        float startOffset = (gridHeight * gridSpacing - freeFallStopHeight) / (gridSpacing * freeFallSpeed);
+        float startTime = (freeFallStartHeight - freeFallStopHeight) / 
+        (gridSpacing * freeFallSpeed) + freeFallStartTime;
+        float totalTime = 1 / freeFallSpeed + bounceTime;
+        float startHeight = gridHeight * gridSpacing;
+        float endHeight = (gridHeight - 1) * gridSpacing;
+        float t = startOffset + Time.time - startTime;
+
+        if (t < totalTime) {
+            currentHeight = stoppingEase.Lerp(startHeight, endHeight, t, totalTime);
+        } else {
+            currentHeight = endHeight;
+            isFreeFall = false;
+            stoppingFall = false;
+            lastDropTime = Time.time - dropAnimationTime;
+            UpdateGridHeight();
+        }
+    }
+
+    private void UpdateHeights() {
+        foreach (GameObject marker in markers.Keys) {
+            marker.transform.position = new Vector2(marker.transform.position.x, currentHeight);
+        }
+        MakeGridChecks();
+    }
+
+    private void UpdateGridHeight() {
+        gridHeight = gridHeight - 1;
+        currentHeight = gridHeight * gridSpacing;
+        List<GameObject> markerList = new List<GameObject>(markers.Keys);
+        foreach (GameObject marker in markerList) {
+            markers[marker] = new Vector2(markers[marker].x, gridHeight);
+        }
+        MakeGridChecks();
+    }
+
+    private void MakeGridChecks() {
+        List<GameObject> markerList = new List<GameObject>(markers.Keys);
+        foreach (GameObject markerObj in markerList) {
+            Marker marker = markerObj.GetComponent<Marker>();
+            int check = treeGrid.CheckNeighbors(markers[markerObj], marker);
+            if (check != 0) {
+                animationLock.Dec();
+                markers.Remove(markerObj);
+                Destroy(markerObj);
+
+                if (!keyboardLock) {
+                    keyboardLock = true;
+                    if (!isFreeFall || stoppingFall) {
+                        stoppingFall = false;
+                        isFreeFall = true;
+                        freeFallStartTime = Time.time;
+                        freeFallStartHeight = currentHeight;
+                    }
+                }
+            }
+        }
     }
 }
