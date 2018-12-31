@@ -105,3 +105,4 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   color: 4
+  animationTime: 0.3
